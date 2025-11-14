@@ -10,3 +10,11 @@ recordings
 *.swp
 *~
 noVNC-*.tgz
+novnc-*.tgz
+
+dist/
+standalone/
+*.log
+npm-debug.log*
+.vscode/*
+
