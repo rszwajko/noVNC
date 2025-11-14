@@ -52,36 +52,28 @@
         import UI from "./app/ui.js";
         import * as Log from './core/util/logging.js';
 
-        let response;
-
-        let defaults = {};
-        let mandatory = {};
+        // check for data injected via <script> tag
+        const injectedData = JSON.parse(document.getElementById("data")?.text ?? "null"); 
 
         // Default settings will be loaded from defaults.json. Mandatory
         // settings will be loaded from mandatory.json, which the user
         // cannot change.
+        const fetchConfig = async (filePath) => {
+            try {
+                const response = await fetch(filePath);
+                if (!response.ok) {
+                    throw Error("" + response.status + " " + response.statusText);
+                }
 
-        try {
-            response = await fetch('./defaults.json');
-            if (!response.ok) {
-                throw Error("" + response.status + " " + response.statusText);
+                return await response.json();
+            } catch (err) {
+                Log.Error(`Couldn't fetch ${filePath}: ` + err);
+                return null;
             }
-
-            defaults = await response.json();
-        } catch (err) {
-            Log.Error("Couldn't fetch defaults.json: " + err);
         }
 
-        try {
-            response = await fetch('./mandatory.json');
-            if (!response.ok) {
-                throw Error("" + response.status + " " + response.statusText);
-            }
-
-            mandatory = await response.json();
-        } catch (err) {
-            Log.Error("Couldn't fetch mandatory.json: " + err);
-        }
+        const defaults = injectedData?.defaults ?? await fetchConfig('./defaults.json');
+        const mandatory = injectedData?.mandatory ?? await fetchConfig('./mandatory.json');
 
         // You can also override any defaults you need here:
         //
@@ -94,8 +86,8 @@
 
         // See docs/EMBEDDING.md for a list of possible settings.
 
-        UI.start({ settings: { defaults: defaults,
-                               mandatory: mandatory } });
+        UI.start({ settings: { defaults: defaults ?? {},
+                               mandatory: mandatory ?? {}} });
     </script>
 </head>
 
