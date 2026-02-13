@@ -1,7 +1,7 @@
 {
-  "name": "@novnc/standalone",
+  "name": "@rszwajko/standalone",
   "version": "1.6.0",
-  "description": "An single page standalone HTML5 VNC client",
+  "description": "Single-page standalone noVNC",
   "type": "module",
   "files": [
     "dist",
@@ -11,6 +11,9 @@
     "docs/LIBRARY.md",
     "docs/LICENSE*"
   ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "main": "./dist/standalone.js",
   "exports": {
     ".": "./dist/standalone.js"
@@ -25,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/novnc/noVNC.git"
+    "url": "git+https://github.com/rszwajko/noVNC.git"
   },
   "author": "Joel Martin <github@martintribe.org> (https://github.com/kanaka)",
   "contributors": [
@@ -33,10 +36,7 @@
     "Pierre Ossman <ossman@cendio.se> (https://github.com/CendioOssman)"
   ],
   "license": "MPL-2.0",
-  "bugs": {
-    "url": "https://github.com/novnc/noVNC/issues"
-  },
-  "homepage": "https://github.com/novnc/noVNC",
+  "homepage": "https://github.com/rszwajko/noVNC",
   "devDependencies": {
     "@babel/core": "latest",
     "@babel/preset-env": "latest",
