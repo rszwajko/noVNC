@@ -18,6 +18,7 @@ import Keyboard from "../core/input/keyboard.js";
 import RFB from "../core/rfb.js";
 import WakeLockManager from './wakelock.js';
 import * as WebUtil from "./webutil.js";
+import * as KubeVirt from "./kubevirt.js";
 
 const PAGE_TITLE = "noVNC";
 
@@ -128,6 +129,7 @@ const UI = {
         UI.addMachineHandlers();
         UI.addConnectionControlHandlers();
         UI.addClipboardHandlers();
+        UI.addKubeVirtHandlers();
         UI.addSettingsHandlers();
         document.getElementById("noVNC_status")
             .addEventListener('click', UI.hideStatus);
@@ -196,6 +198,11 @@ const UI = {
         UI.initSetting('reconnect', false);
         UI.initSetting('reconnect_delay', 5000);
         UI.initSetting('keep_device_awake', false);
+
+        UI.initKubevirt('k8s_preserve_session', true);
+        UI.initKubevirt('k8s_cloud_init_trailing_newline', true);
+        UI.initKubevirtSensitive();
+        UI.initKubevirtKeyboardLayouts();
     },
     // Adds a link to the label elements on the corresponding input elements
     setupSettingLabels() {
@@ -357,6 +364,48 @@ const UI = {
             changeFunc = () => UI.saveSetting(name);
         }
         settingElem.addEventListener('change', changeFunc);
+    },
+
+    addKubeVirtHandlers() {
+        document.getElementById("noVNC_kubevirt_button")
+            .addEventListener('click', UI.toggleKubeVirtPanel);
+        UI.addKubeVirtChangeHandler('k8s_preserve_session');
+        UI.addKubeVirtChangeHandler('k8s_cloud_init_trailing_newline');
+        document.getElementById("noVNC_kubevirt_cloud_init_credentials_user_name_copy")
+            .addEventListener('click', () => UI.copyKubeVirtCredential(
+                "noVNC_kubevirt_cloud_init_credentials_user_name"));
+        document.getElementById("noVNC_kubevirt_cloud_init_credentials_user_pass_copy")
+            .addEventListener('click', () => UI.copyKubeVirtCredential(
+                "noVNC_kubevirt_cloud_init_credentials_user_pass"));
+        document.getElementById("noVNC_kubevirt_cloud_init_credentials_user_name_show")
+            .addEventListener('click', () => UI.toggleKubeVirtCredentialVisibility(
+                "noVNC_kubevirt_cloud_init_credentials_user_name"));
+        document.getElementById("noVNC_kubevirt_cloud_init_credentials_user_name_hide")
+            .addEventListener('click', () => UI.toggleKubeVirtCredentialVisibility(
+                "noVNC_kubevirt_cloud_init_credentials_user_name"));
+        document.getElementById("noVNC_kubevirt_cloud_init_credentials_user_pass_show")
+            .addEventListener('click', () => UI.toggleKubeVirtCredentialVisibility(
+                "noVNC_kubevirt_cloud_init_credentials_user_pass"));
+        document.getElementById("noVNC_kubevirt_cloud_init_credentials_user_pass_hide")
+            .addEventListener('click', () => UI.toggleKubeVirtCredentialVisibility(
+                "noVNC_kubevirt_cloud_init_credentials_user_pass"));
+        document.getElementById("noVNC_kubevirt_retype_button")
+            .addEventListener('click', UI.kubevirtRetypeClipboard);
+        document.getElementById("noVNC_kubevirt_keyboard_layout")
+            .addEventListener('change', UI.handleKubevirtKeyboardLayoutChange);
+        document.getElementById("noVNC_kubevirt_keyboard_layout_favorite_add")
+            .addEventListener('click', UI.toggleKubevirtKeyboardFavorite);
+        document.getElementById("noVNC_kubevirt_keyboard_layout_favorite_remove")
+            .addEventListener('click', UI.toggleKubevirtKeyboardFavorite);
+        window.addEventListener('storage', UI.handleKubevirtFavoriteStorage);
+    },
+
+    addKubeVirtChangeHandler(name, changeFunc) {
+        const ctrl = document.getElementById("noVNC_kubevirt_" + name);
+        if (changeFunc === undefined) {
+            changeFunc = () => UI.saveKubevirt(name);
+        }
+        ctrl.addEventListener('change', changeFunc);
     },
 
     addSettingsHandlers() {
@@ -910,6 +959,185 @@ const UI = {
         return val;
     },
 
+    // Initial page load read/initialization of KubeVirt checkbox settings
+    initKubevirt(name, defVal) {
+        // Has the user overridden the default value?
+        if (name in UI.customSettings.defaults) {
+            defVal = UI.customSettings.defaults[name];
+        }
+        let val = WebUtil.getConfigVar(name);
+        if (val === null) {
+            val = WebUtil.readSetting(name, defVal);
+        }
+        WebUtil.setSetting(name, val);
+        UI.updateKubevirt(name);
+        return val;
+    },
+
+    // Load CloudInit credentials from defaults only; never persist locally
+    initKubevirtSensitive() {
+        const userCtrl = document.getElementById(
+            'noVNC_kubevirt_cloud_init_credentials_user_name');
+        const passCtrl = document.getElementById(
+            'noVNC_kubevirt_cloud_init_credentials_user_pass');
+        if (userCtrl !== null &&
+            'cloud_init_credentials_user_name' in UI.customSettings.defaults) {
+            userCtrl.value = UI.customSettings.defaults.cloud_init_credentials_user_name;
+        }
+        if (passCtrl !== null &&
+            'cloud_init_credentials_user_pass' in UI.customSettings.defaults) {
+            passCtrl.value = UI.customSettings.defaults.cloud_init_credentials_user_pass;
+        }
+    },
+
+    // Populate remote keyboard layout select from shared favourites
+    initKubevirtKeyboardLayouts() {
+        UI.kubevirtShowAllLayouts = false;
+        UI.kubevirtLastKeyboardLayout = KubeVirt.getDefaultKeyboard();
+        UI.populateKubevirtKeyboardLayouts(UI.kubevirtLastKeyboardLayout);
+    },
+
+    populateKubevirtKeyboardLayouts(selected) {
+        const select = document.getElementById('noVNC_kubevirt_keyboard_layout');
+        if (select === null) {
+            return;
+        }
+        let previous = selected || select.value || KubeVirt.getDefaultKeyboard();
+        if (previous === KubeVirt.SHOW_ALL_LAYOUTS_VALUE ||
+            previous === KubeVirt.SHOW_LESS_LAYOUTS_VALUE) {
+            previous = UI.kubevirtLastKeyboardLayout || KubeVirt.getDefaultKeyboard();
+        }
+
+        select.replaceChildren();
+
+        const { favorites, standard, hasMore } = KubeVirt.getKeyboardLayoutGroups({
+            showAll: UI.kubevirtShowAllLayouts,
+        });
+        if (favorites.length > 0) {
+            const favGroup = document.createElement('optgroup');
+            favGroup.label = 'Favorites';
+            for (const [value, def] of favorites) {
+                UI.addOption(favGroup, def.description, value);
+            }
+            select.appendChild(favGroup);
+        }
+        if (standard.length > 0) {
+            const stdGroup = document.createElement('optgroup');
+            stdGroup.label = 'Layouts';
+            for (const [value, def] of standard) {
+                UI.addOption(stdGroup, def.description, value);
+            }
+            select.appendChild(stdGroup);
+        }
+        if (hasMore) {
+            UI.addOption(select, 'Show all…', KubeVirt.SHOW_ALL_LAYOUTS_VALUE);
+        } else if (UI.kubevirtShowAllLayouts) {
+            UI.addOption(select, 'Show less…', KubeVirt.SHOW_LESS_LAYOUTS_VALUE);
+        }
+
+        select.value = previous;
+        if (select.value !== previous) {
+            previous = KubeVirt.getDefaultKeyboard();
+            select.value = previous;
+        }
+        UI.kubevirtLastKeyboardLayout = previous;
+        UI.updateKubevirtKeyboardFavoriteButton();
+    },
+
+    handleKubevirtKeyboardLayoutChange() {
+        const select = document.getElementById('noVNC_kubevirt_keyboard_layout');
+        if (select === null) {
+            return;
+        }
+        if (select.value === KubeVirt.SHOW_ALL_LAYOUTS_VALUE) {
+            UI.kubevirtShowAllLayouts = true;
+            UI.populateKubevirtKeyboardLayouts(
+                UI.kubevirtLastKeyboardLayout || KubeVirt.getDefaultKeyboard());
+            return;
+        }
+        if (select.value === KubeVirt.SHOW_LESS_LAYOUTS_VALUE) {
+            UI.kubevirtShowAllLayouts = false;
+            UI.populateKubevirtKeyboardLayouts(
+                UI.kubevirtLastKeyboardLayout || KubeVirt.getDefaultKeyboard());
+            return;
+        }
+        UI.kubevirtLastKeyboardLayout = select.value;
+        UI.updateKubevirtKeyboardFavoriteButton();
+    },
+
+    updateKubevirtKeyboardFavoriteButton() {
+        const select = document.getElementById('noVNC_kubevirt_keyboard_layout');
+        const addBtn = document.getElementById(
+            'noVNC_kubevirt_keyboard_layout_favorite_add');
+        const removeBtn = document.getElementById(
+            'noVNC_kubevirt_keyboard_layout_favorite_remove');
+        if (select === null || addBtn === null || removeBtn === null) {
+            return;
+        }
+        const isFavorite = KubeVirt.getFavoriteKeymaps().includes(select.value);
+        addBtn.classList.toggle('noVNC_hidden', isFavorite);
+        removeBtn.classList.toggle('noVNC_hidden', !isFavorite);
+    },
+
+    toggleKubevirtKeyboardFavorite() {
+        const select = document.getElementById('noVNC_kubevirt_keyboard_layout');
+        if (select === null || !select.value ||
+            select.value === KubeVirt.SHOW_ALL_LAYOUTS_VALUE ||
+            select.value === KubeVirt.SHOW_LESS_LAYOUTS_VALUE) {
+            return;
+        }
+        KubeVirt.updateFavorite(select.value);
+        UI.populateKubevirtKeyboardLayouts(select.value);
+    },
+
+    handleKubevirtFavoriteStorage(e) {
+        if (e.key !== KubeVirt.VNC_FAVORITE_KEYMAPS_KEY) {
+            return;
+        }
+        const select = document.getElementById('noVNC_kubevirt_keyboard_layout');
+        UI.populateKubevirtKeyboardLayouts(select?.value);
+    },
+
+    // Update KubeVirt checkbox control from saved setting
+    updateKubevirt(name) {
+        let value = UI.getKubevirt(name);
+
+        const ctrl = document.getElementById('noVNC_kubevirt_' + name);
+        if (ctrl === null) {
+            return;
+        }
+
+        if (ctrl.type === 'checkbox') {
+            ctrl.checked = value;
+        }
+    },
+
+    // Save KubeVirt checkbox control to cookie
+    saveKubevirt(name) {
+        const ctrl = document.getElementById('noVNC_kubevirt_' + name);
+        let val;
+        if (ctrl.type === 'checkbox') {
+            val = ctrl.checked;
+        }
+        WebUtil.writeSetting(name, val);
+        return val;
+    },
+
+    // Read KubeVirt checkbox setting from cookie
+    getKubevirt(name) {
+        const ctrl = document.getElementById('noVNC_kubevirt_' + name);
+        let val = WebUtil.readSetting(name);
+        if (typeof val !== 'undefined' && val !== null &&
+            ctrl !== null && ctrl.type === 'checkbox') {
+            if (val.toString().toLowerCase() in {'0': 1, 'no': 1, 'false': 1}) {
+                val = false;
+            } else {
+                val = true;
+            }
+        }
+        return val;
+    },
+
     // These helpers compensate for the lack of parent-selectors and
     // previous-sibling-selectors in CSS which are needed when we want to
     // disable the labels that belong to disabled input elements.
@@ -940,6 +1168,7 @@ const UI = {
  * ------v------*/
 
     closeAllPanels() {
+        UI.closeKubeVirtPanel();
         UI.closeSettingsPanel();
         UI.closePowerPanel();
         UI.closeClipboardPanel();
@@ -990,6 +1219,79 @@ const UI = {
         } else {
             UI.openSettingsPanel();
         }
+    },
+/* ------^-------
+ *   /SETTINGS
+ * ==============
+ *     KUBE VIRT
+ * ------v------*/
+    openKubeVirtPanel() {
+        UI.closeAllPanels();
+        UI.openControlbar();
+
+        // Refresh UI elements from saved cookies
+        UI.updateKubevirt('k8s_preserve_session');
+        UI.updateKubevirt('k8s_cloud_init_trailing_newline');
+        // Always reopen with the short layout list
+        UI.kubevirtShowAllLayouts = false;
+        UI.populateKubevirtKeyboardLayouts(
+            UI.kubevirtLastKeyboardLayout || KubeVirt.getDefaultKeyboard());
+
+        document.getElementById('noVNC_kubevirt')
+            .classList.add("noVNC_open");
+        document.getElementById('noVNC_kubevirt_button')
+            .classList.add("noVNC_selected");
+    },
+
+    closeKubeVirtPanel() {
+        document.getElementById('noVNC_kubevirt')
+            .classList.remove("noVNC_open");
+        document.getElementById('noVNC_kubevirt_button')
+            .classList.remove("noVNC_selected");
+    },
+
+    toggleKubeVirtPanel() {
+        if (document.getElementById('noVNC_kubevirt')
+            .classList.contains("noVNC_open")) {
+            UI.closeKubeVirtPanel();
+        } else {
+            UI.openKubeVirtPanel();
+        }
+    },
+
+    copyKubeVirtCredential(inputId) {
+        let text = document.getElementById(inputId).value;
+        if (!text) {
+            return;
+        }
+        if (UI.getKubevirt('k8s_cloud_init_trailing_newline')) {
+            text += "\n";
+        }
+        navigator.clipboard.writeText(text)
+            .catch(error => Log.Error("Clipboard write failed: ", error));
+    },
+
+    toggleKubeVirtCredentialVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        const showBtn = document.getElementById(inputId + "_show");
+        const hideBtn = document.getElementById(inputId + "_hide");
+        const reveal = input.type === "password";
+        input.type = reveal ? "text" : "password";
+        showBtn.classList.toggle("noVNC_hidden", reveal);
+        hideBtn.classList.toggle("noVNC_hidden", !reveal);
+    },
+
+    kubevirtRetypeClipboard() {
+        const select = document.getElementById('noVNC_kubevirt_keyboard_layout');
+        const selectedKeyboard = select?.value || KubeVirt.EN_US;
+        KubeVirt.sendPaste(UI.rfb, {
+            selectedKeyboard,
+            onUnsupportedChars: (chars) => {
+                UI.showStatus(
+                    _("Unsupported characters in the clipboard: ") + chars.join(', '),
+                    'warn');
+            },
+        });
     },
 
 /* ------^-------
@@ -1929,12 +2231,12 @@ const UI = {
         }
     },
 
-    //Helper to add options to dropdown.
+    //Helper to add options to dropdown (select or optgroup).
     addOption(selectbox, text, value) {
         const optn = document.createElement("OPTION");
         optn.text = text;
         optn.value = value;
-        selectbox.options.add(optn);
+        selectbox.appendChild(optn);
     },
 
 /* ------^-------

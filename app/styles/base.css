@@ -784,6 +784,63 @@ html {
     max-height: calc(100vh - 10em - 25px);
 }
 
+/* Kubevirt */
+#noVNC_kubevirt {
+}
+#noVNC_kubevirt .noVNC_heading img {
+    width: 25px;
+    height: 25px;
+}
+#noVNC_kubevirt ul {
+    list-style: none;
+    padding: 0px;
+}
+#noVNC_kubevirt .noVNC_kubevirt_credentials > li {
+    margin: 2px 0;
+}
+#noVNC_kubevirt .noVNC_kubevirt_input_row {
+    display: flex;
+    align-items: center;
+}
+#noVNC_kubevirt .noVNC_kubevirt_credentials label {
+    margin: 0;
+    font-size: 0.9em;
+}
+#noVNC_kubevirt .noVNC_kubevirt_input_row input:not([type=image]) {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    padding: 0.15em 0.5em;
+    font-size: 0.9em;
+    line-height: 1;
+}
+#noVNC_kubevirt .noVNC_kubevirt_input_row input[type=image] {
+    flex: 0 0 auto;
+    align-self: center;
+    min-width: unset;
+    width: 1.4em;
+    height: 1.4em;
+    margin-left: 2px;
+    padding: 2px;
+    background-color: var(--novnc-blue);
+}
+#noVNC_kubevirt .noVNC_kubevirt_input_row input[type=image].noVNC_hidden {
+    display: none;
+}
+
+#noVNC_kubevirt select,
+#noVNC_kubevirt input[type=button] {
+    width: 100%;
+}
+#noVNC_kubevirt .noVNC_kubevirt_input_row select {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    margin-left: 0;
+    max-width: none;
+}
+
+
 /* Settings */
 #noVNC_settings {
 }

@@ -140,6 +140,92 @@
             </div>
             </div>
 
+            <!-- KubeVirt section -->
+            <input type="image" alt="Kubevirt" src="app/images/kubevirt.svg"
+                id="noVNC_kubevirt_button" class="noVNC_button"
+                title="KubeVirt">
+            <div class="noVNC_crosscenter">
+            <div id="noVNC_kubevirt" class="noVNC_panel">
+                <div class="noVNC_heading">
+                    <img alt="" src="app/images/kubevirt.svg"> KubeVirt
+                </div>
+                <ul>
+                    <li>
+                        <label>
+                            <input id="noVNC_kubevirt_k8s_preserve_session" type="checkbox"
+                                   class="toggle">
+                            Preserve session
+                        </label>
+                    </li>
+                    <li><hr></li>
+                    <li>
+                        <div class="noVNC_expander noVNC_open">CloudInit credentials</div>
+                        <div><ul class="noVNC_kubevirt_credentials">
+                            <li>
+                                <label for="noVNC_kubevirt_cloud_init_credentials_user_name">User:</label>
+                                <span class="noVNC_kubevirt_input_row">
+                                    <input id="noVNC_kubevirt_cloud_init_credentials_user_name" type="password" value="" readonly>
+                                    <input type="image" alt="Show" src="app/images/eye.svg"
+                                        id="noVNC_kubevirt_cloud_init_credentials_user_name_show"
+                                        title="Show">
+                                    <input type="image" alt="Hide" src="app/images/eye-slash.svg"
+                                        id="noVNC_kubevirt_cloud_init_credentials_user_name_hide"
+                                        class="noVNC_hidden"
+                                        title="Hide">
+                                    <input type="image" alt="Copy" src="app/images/clipboard.svg"
+                                        id="noVNC_kubevirt_cloud_init_credentials_user_name_copy"
+                                        title="Copy">
+                                </span>
+                            </li>
+                            <li>
+                                <label for="noVNC_kubevirt_cloud_init_credentials_user_pass">Password:</label>
+                                <span class="noVNC_kubevirt_input_row">
+                                    <input id="noVNC_kubevirt_cloud_init_credentials_user_pass" type="password" value="" readonly>
+                                    <input type="image" alt="Show" src="app/images/eye.svg"
+                                        id="noVNC_kubevirt_cloud_init_credentials_user_pass_show"
+                                        title="Show">
+                                    <input type="image" alt="Hide" src="app/images/eye-slash.svg"
+                                        id="noVNC_kubevirt_cloud_init_credentials_user_pass_hide"
+                                        class="noVNC_hidden"
+                                        title="Hide">
+                                    <input type="image" alt="Copy" src="app/images/clipboard.svg"
+                                        id="noVNC_kubevirt_cloud_init_credentials_user_pass_copy"
+                                        title="Copy">
+                                </span>
+                            </li>
+                            <li>
+                                <label>
+                                    <input id="noVNC_kubevirt_k8s_cloud_init_trailing_newline" type="checkbox"
+                                           class="toggle">
+                                    Add trailing newline
+                                </label>
+                            </li>
+                        </ul></div>
+                    </li>
+                    <li><hr></li>
+                    <li>
+                        <input type="button" id="noVNC_kubevirt_retype_button" value="Type into console">
+                    </li>
+                    <li>
+                        <label for="noVNC_kubevirt_keyboard_layout">Remote keyboard layout:</label>
+                        <span class="noVNC_kubevirt_input_row">
+                            <select id="noVNC_kubevirt_keyboard_layout" name="noVNC_kubevirt_keyboard_layout">
+                            </select>
+                            <input type="image" alt="Add to favorites"
+                                src="app/images/kubevirt-star-outline.svg"
+                                id="noVNC_kubevirt_keyboard_layout_favorite_add"
+                                title="Add to favorites">
+                            <input type="image" alt="Remove from favorites"
+                                src="app/images/kubevirt-star-fill.svg"
+                                id="noVNC_kubevirt_keyboard_layout_favorite_remove"
+                                class="noVNC_hidden"
+                                title="Remove from favorites">
+                        </span>
+                    </li>
+                </ul>
+            </div>
+            </div>
+
             <!-- Toggle fullscreen -->
             <input type="image" alt="Full screen" src="app/images/fullscreen.svg"
                 id="noVNC_fullscreen_button" class="noVNC_button noVNC_hidden"
